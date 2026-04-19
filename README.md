@@ -1,6 +1,6 @@
 # lib-network
 
-基于 OkHttp3 封装的 Android HTTP 请求库，支持 GET / POST / PUT / DELETE / PATCH、文件上传下载、进度回调、同步/异步请求等功能。
+Android 网络库，包含 HTTP 请求（基于 OkHttp3）和 WiFi 管理、网络工具等功能。
 
 ## 引用
 
@@ -25,12 +25,21 @@ dependencies {
 ## 权限
 
 ```xml
+<!-- HTTP 请求 -->
 <uses-permission android:name="android.permission.INTERNET" />
+
+<!-- WiFi 管理 -->
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+<!-- 网络状态 -->
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 ```
 
 ## 初始化
 
-在 `Application.onCreate()` 中完成初始化：
+在 `Application.onCreate()` 中完成 HTTP 初始化：
 
 ```java
 HttpConfig httpConfig = new HttpConfig();
@@ -48,7 +57,7 @@ HttpUtil.getInstance().init(httpConfig);
 
 ## 类说明
 
-### `com.dawn.http.HttpUtil` HTTP请求工具类
+### `com.dawn.http.HttpUtil` HTTP 请求工具类
 
 | 方法 | 说明 |
 |------|------|
@@ -68,7 +77,9 @@ HttpUtil.getInstance().init(httpConfig);
 | `postSyncJson(Class, String, String)` | 同步 POST JSON 请求 |
 | `postSyncJson(Class, String, Map, String)` | 带请求头的同步 POST JSON 请求 |
 | `postSyncJsonRaw(String, String)` | 同步 POST JSON 请求（返回原始字节） |
+| `postSyncJsonRaw(String, Map, String)` | 带请求头的同步 POST JSON 请求（返回原始字节） |
 | `postSyncRaw(String, Map)` | 同步 POST 表单请求（返回原始字节） |
+| `postSyncRaw(String, Map, Map)` | 带请求头的同步 POST 表单请求（返回原始字节） |
 | `postBody(Class, String, Map, String, String, RequestDataCallback)` | 自定义 Content-Type 的异步 POST 请求（字符串 body） |
 | `postBody(Class, String, Map, byte[], String, RequestDataCallback)` | 自定义 Content-Type 的异步 POST 请求（字节数组 body） |
 | `postBodySync(Class, String, Map, String, String)` | 自定义 Content-Type 的同步 POST 请求 |
@@ -94,7 +105,7 @@ HttpUtil.getInstance().init(httpConfig);
 | `updateHeaderField(String, String)` | 更新公共请求头 |
 | `removeHeaderField(String)` | 删除公共请求头 |
 
-### `com.dawn.http.http.entity.HttpConfig` HTTP配置类
+### `com.dawn.http.http.entity.HttpConfig` HTTP 配置类
 
 | 方法 | 说明 |
 |------|------|
@@ -109,6 +120,9 @@ HttpUtil.getInstance().init(httpConfig);
 | `setConnectTimeout(int)` | 设置连接超时（秒），默认 10 |
 | `setWriteTimeout(int)` | 设置写入超时（秒），默认 10 |
 | `setReadTimeout(int)` | 设置读取超时（秒），默认 30 |
+| `getConnectTimeout()` | 获取连接超时 |
+| `getWriteTimeout()` | 获取写入超时 |
+| `getReadTimeout()` | 获取读取超时 |
 | `addCommonField(String, String)` | 添加公共参数（GET 拼接 URL，POST 加入表单） |
 | `updateCommonField(String, String)` | 更新公共参数（不存在则添加） |
 | `removeCommonField(String)` | 删除公共参数 |
@@ -118,7 +132,7 @@ HttpUtil.getInstance().init(httpConfig);
 | `removeHeaderField(String)` | 删除公共请求头 |
 | `clearHeaderField()` | 清空所有公共请求头 |
 
-### `com.dawn.http.http.net.RequestDataCallback<T>` HTTP请求回调类
+### `com.dawn.http.http.net.RequestDataCallback<T>` HTTP 请求回调类
 
 | 方法 | 说明 |
 |------|------|
@@ -160,7 +174,14 @@ HttpUtil.getInstance().init(httpConfig);
 
 > 所有回调自动切换到主线程，可直接更新 UI。当总大小无法获取时，所有参数值为 `-1`。回调最小间隔 100ms。
 
-### `com.dawn.http.http.util.Util` 工具类
+### `com.dawn.http.http.ui.ProgressHelper` 进度包装工具类
+
+| 方法 | 说明 |
+|------|------|
+| `withProgress(RequestBody, ProgressListener)` | 包装请求体为带进度的请求体 |
+| `withProgress(ResponseBody, ProgressListener)` | 包装响应体为带进度的响应体 |
+
+### `com.dawn.http.http.util.Util` HTTP 工具类
 
 | 方法 | 说明 |
 |------|------|
@@ -168,6 +189,117 @@ HttpUtil.getInstance().init(httpConfig);
 | `getMosaicParameter(String, List)` | 拼接公共参数到 URL |
 | `getAuthorization(String, String)` | 生成 Basic Auth 认证字符串 |
 
+---
+
+### `com.dawn.http.wifi.WifiFactory` WiFi 操作工厂类
+
+| 方法 | 说明 |
+|------|------|
+| `getInstance(Context)` | 获取单例实例 |
+| `setListener(OnWifiListener)` | 设置 WiFi 状态监听器 |
+| `openWifi()` | 打开 WiFi 并注册广播接收器 |
+| `closeWifiReceiver()` | 关闭 WiFi 广播接收器 |
+| `getConnectWifiSsid()` | 获取当前连接的 WiFi SSID |
+| `connectWifi(String, String)` | 连接 WiFi（SSID, 密码） |
+| `disconnectWifi(String)` | 断开 WiFi |
+| `clearWifiConfig()` | 清除所有 WiFi 配置 |
+| `clearWifiConfig(String)` | 清除指定 WiFi 配置 |
+| `isWifiEnabled()` | WiFi 是否已打开 |
+| `isWifiConnected()` | 是否已连接 WiFi |
+| `getWifiSignalStrength()` | 获取 WiFi 信号强度（RSSI） |
+| `getWifiSignalLevel(int)` | 获取 WiFi 信号等级 |
+| `getWifiIpAddress()` | 获取 WiFi IP 地址 |
+
+WiFi 使用示例：
+
+```java
+WifiFactory wifiFactory = WifiFactory.getInstance(context);
+wifiFactory.setListener(new OnWifiListener() {
+    @Override
+    public void refreshWifiList(List<String> wifiList) {
+        // WiFi 列表刷新
+    }
+
+    @Override
+    public void wifiConnectSuccess(String ssid) {
+        // WiFi 连接成功
+    }
+
+    @Override
+    public void wifiDisconnect() {
+        // WiFi 断开
+    }
+});
+wifiFactory.openWifi();
+wifiFactory.connectWifi("SSID", "password");
 ```
-MIT License
-```
+
+### `com.dawn.http.wifi.OnWifiListener` WiFi 状态监听接口
+
+| 方法 | 说明 |
+|------|------|
+| `refreshWifiList(List<String>)` | WiFi 列表刷新回调 |
+| `wifiConnectSuccess(String)` | WiFi 连接成功回调 |
+| `wifiDisconnect()` | WiFi 断开回调 |
+
+### `com.dawn.http.wifi.LWifiBroadcastReceiver` WiFi 广播接收器
+
+| 方法 | 说明 |
+|------|------|
+| `onWifiEnabled()` | WiFi 已打开回调 |
+| `onWifiDisabled()` | WiFi 已关闭回调 |
+| `onScanResultsAvailable(List<ScanResult>)` | WiFi 扫描结果回调 |
+| `onWifiConnected(String)` | WiFi 已连接回调（返回 SSID） |
+| `onWifiDisconnected()` | WiFi 已断开回调 |
+
+> 抽象类，监听 `WIFI_STATE_CHANGED`、`SCAN_RESULTS_AVAILABLE`、`NETWORK_STATE_CHANGED` 广播。
+
+### `com.dawn.http.wifi.LNetUtil` 网络工具类
+
+| 方法 | 说明 |
+|------|------|
+| `getNetworkType(Context)` | 获取网络类型（ConnectivityManager.TYPE_*） |
+| `isNetworkAvailable(Context)` | 网络是否可用 |
+| `isNetworkConnected(Context)` | 网络是否已连接 |
+| `isWiFi(Context)` | 是否是 WiFi 连接 |
+| `isMobileNetwork(Context)` | 是否是移动网络 |
+| `getNetworkTypeName(Context)` | 获取网络类型名称（wifi / 移动子类型名 / disconnect / unknown） |
+| `openNetSetting(Activity)` | 打开网络设置界面 |
+| `setWifiEnabled(Context, boolean)` | 设置 WiFi 开关状态 |
+| `getWifiSignalStrength(Context)` | 获取 WiFi 信号强度（RSSI） |
+| `getCurrentWifiName(Context)` | 获取当前连接的 WiFi 名称 |
+| `getLocalIPAddress()` | 获取本机 IP 地址 |
+| `ping(String, int, StringBuffer)` | Ping 测试（指定次数） |
+| `simplePing(String)` | 简单 Ping 测试（1 次） |
+| `getPingAverageMs(String, int)` | 获取 Ping 平均延迟（ms） |
+| `isPortReachable(String, int, int)` | 检查指定端口是否可连接 |
+
+### `com.dawn.http.wifi.LWifiUtil` WiFi Ping 工具类
+
+| 方法 | 说明 |
+|------|------|
+| `isPingSuccess(String, int)` | Ping 检测网络是否正常 |
+| `isPingSuccess(String)` | Ping 检测（默认 4 次） |
+| `pingAnalyze(String, int)` | Ping 并获取网络质量分析结果 |
+
+### `com.dawn.http.wifi.ping.PingAnalyzer` Ping 输出解析器
+
+| 方法 | 说明 |
+|------|------|
+| `analyze(String)` | 解析 ping 命令输出，返回 `NetworkAnalysisResult` |
+
+### `com.dawn.http.wifi.ping.NetworkAnalysisResult` 网络质量分析结果
+
+| 方法 | 说明 |
+|------|------|
+| `calculateMetrics()` | 根据延迟数据计算统计指标 |
+| `generateReport()` | 生成网络质量分析报告 |
+| `getQualityRating()` | 获取网络质量评级（优 / 中 / 差） |
+| `getDelays()` | 获取延迟列表 |
+| `getPacketsTransmitted()` | 获取发送包数 |
+| `getPacketsReceived()` | 获取接收包数 |
+| `getPacketLoss()` | 获取丢包率 |
+| `getAvgDelay()` | 获取平均延迟 |
+| `getMinDelay()` | 获取最小延迟 |
+| `getMaxDelay()` | 获取最大延迟 |
+| `getJitter()` | 获取延迟波动（抖动） |
