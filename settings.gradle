@@ -1,0 +1,3 @@
+rootProject.name = "lib-network"
+include ':app'
+include ':http'
